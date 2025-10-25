@@ -16,7 +16,7 @@ repository = "https://github.com/mountainlizard/mountain-mqtt-embassy"
 readme = "README.md"
 
 [dependencies]
-embassy-net = { version = "0.7.0", features = [
+embassy-net = { version = "0.7.1", features = [
   "defmt",
   "tcp",
   "udp",
@@ -26,9 +26,9 @@ embassy-net = { version = "0.7.0", features = [
   "dns",
 ] }
 
-embassy-sync = { version = "0.6.2", features = ["defmt"] }
+embassy-sync = { version = "0.7.2", features = ["defmt"] }
 
-embassy-time = { version = "0.4.0", features = [
+embassy-time = { version = "0.5.0", features = [
   "defmt",
   "defmt-timestamp-uptime",
 ] }
