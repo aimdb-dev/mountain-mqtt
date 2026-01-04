@@ -16,7 +16,7 @@ repository = "https://github.com/mountainlizard/mountain-mqtt-embassy"
 readme = "README.md"
 
 [dependencies]
-embassy-net = { version = "0.7.1", features = [
+embassy-net = { version = "0.8.0", features = [
   "defmt",
   "tcp",
   "udp",
