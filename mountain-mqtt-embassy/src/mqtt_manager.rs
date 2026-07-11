@@ -220,7 +220,10 @@ impl<E> defmt::Format for MqttEvent<E> {
     }
 }
 
-struct State<A> {
+/// Per-connection bookkeeping shared between [handle_messages] and its
+/// [ChannelEventHandler]. Exposed so a custom transport (e.g. a TLS session)
+/// can drive [handle_messages] with the same semantics as [run].
+pub struct State<A> {
     /// The instant when the most recent connection event occurred, indicating
     /// the connection was live. Set when state is created
     /// (should be just after connecting), and again whenever we receive an
@@ -232,7 +235,9 @@ struct State<A> {
 }
 
 impl<A> State<A> {
-    fn new() -> Self {
+    /// Create fresh state for a new connection (records the current instant as
+    /// the last connection event, so the responsiveness check starts now).
+    pub fn new() -> Self {
         Self {
             last_connection_event: Instant::now(),
             pending_action: None,
@@ -243,13 +248,42 @@ impl<A> State<A> {
     }
 }
 
-struct ChannelEventHandler<'a, A, E, const P: usize, const Q: usize>
+impl<A> Default for State<A> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// [EventHandler] that forwards received MQTT events onto the manager's
+/// [MqttEvent] channel and refreshes the connection-liveness timestamp in
+/// [State] on every server acknowledgement. Exposed so a custom transport can
+/// build the same [Client] the built-in [run] uses.
+pub struct ChannelEventHandler<'a, A, E, const P: usize, const Q: usize>
 where
     E: FromApplicationMessage<P> + Clone,
 {
     connection_id: ConnectionId,
     event_sender: &'a Sender<'a, NoopRawMutex, MqttEvent<E>, Q>,
     state: &'a RefCell<State<A>>,
+}
+
+impl<'a, A, E, const P: usize, const Q: usize> ChannelEventHandler<'a, A, E, P, Q>
+where
+    E: FromApplicationMessage<P> + Clone,
+{
+    /// Build a handler for the connection identified by `connection_id`,
+    /// forwarding events to `event_sender` and recording liveness into `state`.
+    pub fn new(
+        connection_id: ConnectionId,
+        event_sender: &'a Sender<'a, NoopRawMutex, MqttEvent<E>, Q>,
+        state: &'a RefCell<State<A>>,
+    ) -> Self {
+        Self {
+            connection_id,
+            event_sender,
+            state,
+        }
+    }
 }
 
 impl<A, E, const P: usize, const Q: usize> EventHandler<P> for ChannelEventHandler<'_, A, E, P, Q>
@@ -331,12 +365,27 @@ where
     Ok(())
 }
 
-/// Handle messages until we encounter an error
-async fn handle_messages<'a, A, C, E, const Q: usize>(
+/// Drive a single MQTT session over an already-connected [Client] until an
+/// error ends it: connect, subscribe the per-connection `subscribe_topics`,
+/// then keep it alive (pings, responsiveness checks) while dispatching actions
+/// from `action_receiver` and forwarding events to `event_sender`.
+///
+/// This is the transport-agnostic core of [run]. Call it directly when you
+/// need a custom transport (for example a TLS session) but want identical
+/// keep-alive, action-dispatch and event semantics: build your own
+/// [Client]/[ChannelEventHandler]/[State] over the transport, then run this in
+/// your reconnect loop.
+///
+/// `subscribe_topics` are (re-)subscribed on every call, i.e. once per
+/// connection, so inbound subscriptions survive reconnects. Pass an empty
+/// slice to subscribe via actions instead (see [run]).
+#[allow(clippy::too_many_arguments)]
+pub async fn handle_messages<'a, A, C, E, const Q: usize>(
     current_connection_id: ConnectionId,
     client: &mut C,
     state: &RefCell<State<A>>,
     connection_settings: &ConnectionSettings<'static>,
+    subscribe_topics: &[(&str, QualityOfService)],
     event_sender: &Sender<'static, NoopRawMutex, MqttEvent<E>, Q>,
     action_receiver: &mut Receiver<'static, NoopRawMutex, A, Q>,
     settings: &Settings,
@@ -353,6 +402,11 @@ where
             connection_id: current_connection_id,
         })
         .await;
+
+    // Re-subscribe per connection so inbound routing survives reconnects.
+    for (topic, qos) in subscribe_topics {
+        client.subscribe(topic, *qos).await?;
+    }
 
     let mut connection_instant = Some(Instant::now());
     let mut last_ping_instant = Instant::now();
@@ -508,6 +562,37 @@ pub async fn run<A, E, const P: usize, const B: usize, const Q: usize>(
     connection_settings: ConnectionSettings<'static>,
     settings: Settings,
     event_sender: Sender<'static, NoopRawMutex, MqttEvent<E>, Q>,
+    action_receiver: Receiver<'static, NoopRawMutex, A, Q>,
+) -> !
+where
+    E: FromApplicationMessage<P> + Clone,
+    A: MqttOperations + Clone,
+{
+    // Subscriptions are driven via actions on this path (see the docs above).
+    run_with_subscriptions::<A, E, P, B, Q>(
+        stack,
+        connection_settings,
+        settings,
+        &[],
+        event_sender,
+        action_receiver,
+    )
+    .await
+}
+
+/// Like [run], but (re-)subscribes to `subscribe_topics` on every connection,
+/// so inbound subscriptions survive reconnects without the caller having to
+/// re-issue subscribe actions in response to each [MqttEvent::Connected].
+///
+/// Pass an empty slice for the plain [run] behaviour (subscribe via actions).
+/// Each entry is a `(topic, QualityOfService)` pair, subscribed in order right
+/// after connecting.
+pub async fn run_with_subscriptions<A, E, const P: usize, const B: usize, const Q: usize>(
+    stack: Stack<'static>,
+    connection_settings: ConnectionSettings<'static>,
+    settings: Settings,
+    subscribe_topics: &[(&str, QualityOfService)],
+    event_sender: Sender<'static, NoopRawMutex, MqttEvent<E>, Q>,
     mut action_receiver: Receiver<'static, NoopRawMutex, A, Q>,
 ) -> !
 where
@@ -547,11 +632,7 @@ where
         let connection_id = ConnectionId::new(connection_index);
         connection_index += 1;
 
-        let event_handler = ChannelEventHandler {
-            connection_id,
-            event_sender: &event_sender,
-            state: &state,
-        };
+        let event_handler = ChannelEventHandler::new(connection_id, &event_sender, &state);
 
         let mut client = ClientNoQueue::new(
             connection,
@@ -566,6 +647,7 @@ where
             &mut client,
             &state,
             &connection_settings,
+            subscribe_topics,
             &event_sender,
             &mut action_receiver,
             &settings,
