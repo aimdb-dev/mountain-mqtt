@@ -1,6 +1,8 @@
 [package]
-name = "mountain-mqtt"
-version = "0.2.0"
+# Published fork of `mountain-mqtt` — see the sibling crate's manifest for why
+# the rename is required rather than cosmetic.
+name = "aimdb-mountain-mqtt"
+version = "0.2.1"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 keywords = ["mqtt", "tokio", "embedded-hal-async"]
@@ -11,8 +13,8 @@ categories = [
   "no-std::no-alloc",
   "encoding",
 ]
-description = "A no_std compatible, async MQTT v5 client for tokio and embedded use"
-repository = "https://github.com/mountainlizard/mountain-mqtt"
+description = "A no_std compatible, async MQTT v5 client for tokio and embedded use (aimdb-dev fork of mountain-mqtt)"
+repository = "https://github.com/aimdb-dev/mountain-mqtt"
 readme = "README.md"
 
 [dependencies]

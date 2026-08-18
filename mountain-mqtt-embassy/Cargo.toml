@@ -1,6 +1,11 @@
 [package]
-name = "mountain-mqtt-embassy"
-version = "0.2.0"
+# Published fork of `mountain-mqtt-embassy`. The prefix is load-bearing: this
+# fork adds API that aimdb calls (`ConnectionSettings::authenticated`) and moves
+# the embassy dependencies to 0.9/0.8/0.5.1, while crates.io
+# `mountain-mqtt-embassy 0.2.0` has neither. Publishing anything that resolved
+# to that version would not compile.
+name = "aimdb-mountain-mqtt-embassy"
+version = "0.2.1"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 keywords = ["mqtt", "embassy"]
@@ -11,8 +16,8 @@ categories = [
   "no-std::no-alloc",
   "encoding",
 ]
-description = "A no_std compatible, async MQTT v5 client for embassy, using mountain-mqtt"
-repository = "https://github.com/mountainlizard/mountain-mqtt-embassy"
+description = "A no_std compatible, async MQTT v5 client for embassy, using mountain-mqtt (aimdb-dev fork)"
+repository = "https://github.com/aimdb-dev/mountain-mqtt"
 readme = "README.md"
 
 [dependencies]
@@ -35,7 +40,9 @@ embassy-time = { version = "0.5.1", features = [
 
 defmt = { version = "1.0", optional = true }
 
-mountain-mqtt = { version = "0.2.0", path = "../mountain-mqtt", default-features = false, features = [
+# Keyed `mountain-mqtt` so `use mountain_mqtt::…` in this crate is unchanged;
+# `package` selects the renamed fork.
+mountain-mqtt = { package = "aimdb-mountain-mqtt", version = "0.2.1", path = "../mountain-mqtt", default-features = false, features = [
   "embedded-io-async",
   "embedded-hal-async",
   "defmt",
