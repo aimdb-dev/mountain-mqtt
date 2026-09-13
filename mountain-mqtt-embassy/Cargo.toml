@@ -1,12 +1,11 @@
 [package]
-# Published fork of `mountain-mqtt-embassy`. The prefix is load-bearing: this
-# fork adds API that aimdb calls (`ConnectionSettings::authenticated`) and moves
-# the embassy dependencies to 0.9/0.8/0.5.1, while crates.io
-# `mountain-mqtt-embassy 0.2.0` has neither. Publishing anything that resolved
-# to that version would not compile.
+# Published fork of `mountain-mqtt-embassy`, renamed for the same reason as the
+# sibling crate. AimDB does not depend on this crate — design 052 absorbed its
+# session loop into `aimdb-mqtt-connector` — but it is kept building so the fork
+# stays a faithful mirror of upstream.
 name = "aimdb-mountain-mqtt-embassy"
-version = "0.2.1"
-edition = "2021"
+version = "0.5.0"
+edition = "2024"
 license = "MIT OR Apache-2.0"
 keywords = ["mqtt", "embassy"]
 categories = [
@@ -21,8 +20,10 @@ repository = "https://github.com/aimdb-dev/mountain-mqtt"
 readme = "README.md"
 
 [dependencies]
-embassy-net = { version = "0.9.0", features = [
-  "defmt",
+
+heapless = "0.8"
+
+embassy-net = { version = "0.9.1", features = [
   "tcp",
   "udp",
   "raw",
@@ -31,23 +32,36 @@ embassy-net = { version = "0.9.0", features = [
   "dns",
 ] }
 
-embassy-sync = { version = "0.8.0", features = ["defmt"] }
+embassy-sync = { version = "0.8.0" }
 
-embassy-time = { version = "0.5.1", features = [
-  "defmt",
-  "defmt-timestamp-uptime",
-] }
+embassy-time = { version = "0.5.0" }
 
-defmt = { version = "1.0", optional = true }
+embassy-futures = { version = "0.1.2" }
+
+defmt = { version = "1.1", optional = true }
+
+log = { version = "0.4", optional = true }
+
+embedded-io-async = { version = "0.7" }
 
 # Keyed `mountain-mqtt` so `use mountain_mqtt::…` in this crate is unchanged;
 # `package` selects the renamed fork.
-mountain-mqtt = { package = "aimdb-mountain-mqtt", version = "0.2.1", path = "../mountain-mqtt", default-features = false, features = [
+mountain-mqtt = { package = "aimdb-mountain-mqtt", version = "0.5.0", path = "../mountain-mqtt", default-features = false, features = [
   "embedded-io-async",
   "embedded-hal-async",
-  "defmt",
 ] }
 
 [features]
 default = ["defmt"]
-defmt = ["dep:defmt"]
+
+defmt = [
+  "dep:defmt",
+  "embassy-net/defmt",
+  "embassy-sync/defmt",
+  "embassy-time/defmt",
+  "embassy-time/defmt-timestamp-uptime",
+  "embedded-io-async/defmt",
+  "mountain-mqtt/defmt",
+]
+
+log = ["dep:log", "embassy-net/log", "embassy-sync/log", "embassy-time/log"]

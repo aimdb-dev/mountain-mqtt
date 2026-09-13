@@ -1,10 +1,7 @@
 use super::packet::{Packet, PacketRead, PacketWrite};
 use crate::data::{
-    packet_identifier::PacketIdentifier,
-    packet_type::PacketType,
-    property::SubscribeProperty,
-    quality_of_service::QualityOfService,
-    subscription_options::{RetainHandling, SubscriptionOptions},
+    packet_identifier::PacketIdentifier, packet_type::PacketType, property::SubscribeProperty,
+    quality_of_service::QualityOfService, subscription_options::SubscriptionOptions,
 };
 use crate::{
     codec::{
@@ -24,15 +21,20 @@ pub struct SubscriptionRequest<'a> {
 }
 
 impl<'a> SubscriptionRequest<'a> {
+    /// Create new [`SubscriptionRequest`] with qos specified and other options as produced by
+    /// [`SubscriptionOptions::new`]
     pub fn new(topic_name: &'a str, maximum_qos: QualityOfService) -> SubscriptionRequest<'a> {
+        Self::new_with_options(topic_name, SubscriptionOptions::new(maximum_qos))
+    }
+
+    /// Create a new [`SubscriptionRequest`] with all options
+    pub fn new_with_options(
+        topic_name: &'a str,
+        options: SubscriptionOptions,
+    ) -> SubscriptionRequest<'a> {
         SubscriptionRequest {
             topic_name,
-            options: SubscriptionOptions {
-                maximum_qos,
-                no_local: false,
-                retain_as_published: false,
-                retain_handling: RetainHandling::SendOnSubscribe,
-            },
+            options,
         }
     }
 }
@@ -67,6 +69,24 @@ impl<'a, const P: usize, const S: usize> Subscribe<'a, P, S> {
             other_requests,
             properties,
         }
+    }
+
+    pub fn packet_identifier(&self) -> &PacketIdentifier {
+        &self.packet_identifier
+    }
+
+    pub fn request_maximum_qos(&self) -> QualityOfService {
+        let mut qos = self.first_request.options.maximum_qos;
+        for r in self.other_requests.iter() {
+            if r.options.maximum_qos > qos {
+                qos = r.options.maximum_qos;
+            }
+        }
+        qos
+    }
+
+    pub fn request_count(&self) -> usize {
+        self.other_requests.len() + 1
     }
 }
 
@@ -137,11 +157,14 @@ impl<'a, const P: usize, const S: usize> PacketRead<'a> for Subscribe<'a, P, S> 
 
 #[cfg(test)]
 mod tests {
-    use crate::codec::{
-        mqtt_reader::MqttBufReader,
-        mqtt_writer::{MqttBufWriter, MqttLenWriter},
-        read::Read,
-        write::Write,
+    use crate::{
+        codec::{
+            mqtt_reader::MqttBufReader,
+            mqtt_writer::{MqttBufWriter, MqttLenWriter},
+            read::Read,
+            write::Write,
+        },
+        data::subscription_options::RetainHandling,
     };
 
     use super::*;
@@ -246,8 +269,8 @@ mod tests {
     }
 
     #[test]
-    fn mqtt_buf_reader_errors_on_invalid_retain_handing_in_subscription_options(
-    ) -> mqtt_reader::Result<()> {
+    fn mqtt_buf_reader_errors_on_invalid_retain_handing_in_subscription_options()
+    -> mqtt_reader::Result<()> {
         // Bits 4 and 5 set to 1, implies retain handling value 3, the only invalid option
         let buf = [0b0011_0000];
         let mut r = MqttBufReader::new(&buf);
@@ -260,8 +283,8 @@ mod tests {
     }
 
     #[test]
-    fn mqtt_buf_reader_errors_on_reserved_bit6_set_in_subscription_options(
-    ) -> mqtt_reader::Result<()> {
+    fn mqtt_buf_reader_errors_on_reserved_bit6_set_in_subscription_options()
+    -> mqtt_reader::Result<()> {
         let buf = [0b0100_0000];
         let mut r = MqttBufReader::new(&buf);
         assert_eq!(
@@ -273,8 +296,8 @@ mod tests {
     }
 
     #[test]
-    fn mqtt_buf_reader_errors_on_reserved_bit7_set_in_subscription_options(
-    ) -> mqtt_reader::Result<()> {
+    fn mqtt_buf_reader_errors_on_reserved_bit7_set_in_subscription_options()
+    -> mqtt_reader::Result<()> {
         let buf = [0b1000_0000];
         let mut r = MqttBufReader::new(&buf);
         assert_eq!(

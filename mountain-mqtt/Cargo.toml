@@ -1,9 +1,9 @@
 [package]
-# Published fork of `mountain-mqtt` — see the sibling crate's manifest for why
-# the rename is required rather than cosmetic.
+# Published fork of `mountain-mqtt`, tracking upstream `main` with a ZERO-LINE
+# source delta
 name = "aimdb-mountain-mqtt"
-version = "0.2.1"
-edition = "2021"
+version = "0.5.1"
+edition = "2024"
 license = "MIT OR Apache-2.0"
 keywords = ["mqtt", "tokio", "embedded-hal-async"]
 categories = [
@@ -17,6 +17,13 @@ description = "A no_std compatible, async MQTT v5 client for tokio and embedded 
 repository = "https://github.com/aimdb-dev/mountain-mqtt"
 readme = "README.md"
 
+# The package is renamed but the *library* is not, so upstream's own tests and
+# examples (`use mountain_mqtt::…`) compile unchanged and `cargo publish` can
+# verify normally. Downstreams keying the dependency as `mountain-mqtt` with
+# `package = "aimdb-mountain-mqtt"` are unaffected either way.
+[lib]
+name = "mountain_mqtt"
+
 [dependencies]
 heapless = "0.8"
 
@@ -24,7 +31,7 @@ embedded-io = { version = "0.7", optional = true }
 embedded-io-async = { version = "0.7", optional = true }
 
 embedded-hal-async = { version = "1.0", optional = true }
-defmt = { version = "0.3", optional = true }
+defmt = { version = "1.1", optional = true }
 
 tokio = { version = "1", features = ["full"], optional = true }
 
