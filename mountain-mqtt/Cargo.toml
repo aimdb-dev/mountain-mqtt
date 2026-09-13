@@ -1,12 +1,8 @@
 [package]
 # Published fork of `mountain-mqtt`, tracking upstream `main` with a ZERO-LINE
-# source delta: this manifest's identity fields are the only divergence. The
-# rename is load-bearing because `aimdb-mqtt-connector` is itself published and
-# crates.io forbids a git dependency in a published crate, while crates.io
-# `mountain-mqtt` is still 0.2.0. Retire this fork the moment upstream releases
-# 0.5.0 or later — see aimdb docs/design/053.
+# source delta
 name = "aimdb-mountain-mqtt"
-version = "0.5.0"
+version = "0.5.1"
 edition = "2024"
 license = "MIT OR Apache-2.0"
 keywords = ["mqtt", "tokio", "embedded-hal-async"]
