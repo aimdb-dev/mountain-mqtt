@@ -99,13 +99,13 @@ serde-json-core = { version = "0.6.0", features = ["defmt"] }
 # CORE - End #
 ##############
 
-mountain-mqtt = { path = "../mountain-mqtt", default-features = false, features = [
+mountain-mqtt = { package = "aimdb-mountain-mqtt", path = "../mountain-mqtt", default-features = false, features = [
   "embedded-io-async",
   "embedded-hal-async",
   "defmt",
 ] }
 
-mountain-mqtt-embassy = { path = "../mountain-mqtt-embassy" }
+mountain-mqtt-embassy = { package = "aimdb-mountain-mqtt-embassy", path = "../mountain-mqtt-embassy" }
 
 [patch.crates-io]
 # embassy-embedded-hal = { git = "https://github.com/embassy-rs/embassy", rev = "611474d" }

@@ -1,5 +1,11 @@
 [package]
-name = "mountain-mqtt"
+# Published fork of `mountain-mqtt`, tracking upstream `main` with a ZERO-LINE
+# source delta: this manifest's identity fields are the only divergence. The
+# rename is load-bearing because `aimdb-mqtt-connector` is itself published and
+# crates.io forbids a git dependency in a published crate, while crates.io
+# `mountain-mqtt` is still 0.2.0. Retire this fork the moment upstream releases
+# 0.5.0 or later — see aimdb docs/design/053.
+name = "aimdb-mountain-mqtt"
 version = "0.5.0"
 edition = "2024"
 license = "MIT OR Apache-2.0"
@@ -11,9 +17,16 @@ categories = [
   "no-std::no-alloc",
   "encoding",
 ]
-description = "A no_std compatible, async MQTT v5 client for tokio and embedded use"
-repository = "https://github.com/mountainlizard/mountain-mqtt"
+description = "A no_std compatible, async MQTT v5 client for tokio and embedded use (aimdb-dev fork of mountain-mqtt)"
+repository = "https://github.com/aimdb-dev/mountain-mqtt"
 readme = "README.md"
+
+# The package is renamed but the *library* is not, so upstream's own tests and
+# examples (`use mountain_mqtt::…`) compile unchanged and `cargo publish` can
+# verify normally. Downstreams keying the dependency as `mountain-mqtt` with
+# `package = "aimdb-mountain-mqtt"` are unaffected either way.
+[lib]
+name = "mountain_mqtt"
 
 [dependencies]
 heapless = "0.8"

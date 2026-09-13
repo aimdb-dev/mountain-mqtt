@@ -1,5 +1,9 @@
 [package]
-name = "mountain-mqtt-embassy"
+# Published fork of `mountain-mqtt-embassy`, renamed for the same reason as the
+# sibling crate. AimDB does not depend on this crate — design 052 absorbed its
+# session loop into `aimdb-mqtt-connector` — but it is kept building so the fork
+# stays a faithful mirror of upstream.
+name = "aimdb-mountain-mqtt-embassy"
 version = "0.5.0"
 edition = "2024"
 license = "MIT OR Apache-2.0"
@@ -11,8 +15,8 @@ categories = [
   "no-std::no-alloc",
   "encoding",
 ]
-description = "A no_std compatible, async MQTT v5 client for embassy, using mountain-mqtt"
-repository = "https://github.com/mountainlizard/mountain-mqtt-embassy"
+description = "A no_std compatible, async MQTT v5 client for embassy, using mountain-mqtt (aimdb-dev fork)"
+repository = "https://github.com/aimdb-dev/mountain-mqtt"
 readme = "README.md"
 
 [dependencies]
@@ -40,7 +44,9 @@ log = { version = "0.4", optional = true }
 
 embedded-io-async = { version = "0.7" }
 
-mountain-mqtt = { version = "0.5.0", path = "../mountain-mqtt", default-features = false, features = [
+# Keyed `mountain-mqtt` so `use mountain_mqtt::…` in this crate is unchanged;
+# `package` selects the renamed fork.
+mountain-mqtt = { package = "aimdb-mountain-mqtt", version = "0.5.0", path = "../mountain-mqtt", default-features = false, features = [
   "embedded-io-async",
   "embedded-hal-async",
 ] }
